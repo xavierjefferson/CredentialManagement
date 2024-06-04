@@ -1,4 +1,4 @@
-This library provides .NET based API to deal with Windows Credentials Management API.  It was copied from the legacy CodePlex archive.
+This library provides .NET based API to deal with Windows Credentials Management API.  This is code copied from the legacy CodePlex archive as of 2018-05-20 15:36:39.
 
 
 ## Project Description  
