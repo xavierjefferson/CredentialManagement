@@ -7,11 +7,48 @@ namespace CredentialManagement
 {
     public class NativeMethods
     {
-
         public const int CREDUI_MAX_USERNAME_LENGTH = 513;
         public const int CREDUI_MAX_PASSWORD_LENGTH = 256;
         public const int CREDUI_MAX_MESSAGE_LENGTH = 32767;
         public const int CREDUI_MAX_CAPTION_LENGTH = 128;
+
+        [DllImport("Advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern bool CredRead(string target, CredentialType type, int reservedFlag,
+            out IntPtr CredentialPtr);
+
+        [DllImport("Advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern bool CredWrite([In] ref CREDENTIAL userCredential, [In] uint flags);
+
+        [DllImport("Advapi32.dll", EntryPoint = "CredFree", SetLastError = true)]
+        internal static extern bool CredFree([In] IntPtr cred);
+
+        [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode)]
+        internal static extern bool CredDelete(StringBuilder target, CredentialType type, int flags);
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern bool CredEnumerateW(string filter, int flag, out uint count, out IntPtr pCredentials);
+
+        [DllImport("credui.dll")]
+        internal static extern CredUIReturnCodes CredUIPromptForCredentials(ref CREDUI_INFO creditUR, string targetName,
+            IntPtr reserved1, int iError, StringBuilder userName, int maxUserName, StringBuilder password,
+            int maxPassword, [MarshalAs(UnmanagedType.Bool)] ref bool pfSave, int flags);
+
+        [DllImport("credui.dll", CharSet = CharSet.Unicode)]
+        internal static extern CredUIReturnCodes CredUIPromptForWindowsCredentials(ref CREDUI_INFO notUsedHere,
+            int authError, ref uint authPackage, IntPtr InAuthBuffer, uint InAuthBufferSize,
+            out IntPtr refOutAuthBuffer, out uint refOutAuthBufferSize, ref bool fSave, int flags);
+
+        [DllImport("ole32.dll")]
+        internal static extern void CoTaskMemFree(IntPtr ptr);
+
+        [DllImport("credui.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern bool CredPackAuthenticationBuffer(int dwFlags, StringBuilder pszUserName,
+            StringBuilder pszPassword, IntPtr pPackedCredentials, ref int pcbPackedCredentials);
+
+        [DllImport("credui.dll", CharSet = CharSet.Auto)]
+        internal static extern bool CredUnPackAuthenticationBuffer(int dwFlags, IntPtr pAuthBuffer, uint cbAuthBuffer,
+            StringBuilder pszUserName, ref int pcchMaxUserName, StringBuilder pszDomainName, ref int pcchMaxDomainame,
+            StringBuilder pszPassword, ref int pcchMaxPassword);
 
 
         [StructLayout(LayoutKind.Sequential)]
@@ -19,20 +56,16 @@ namespace CredentialManagement
         {
             public int Flags;
             public int Type;
-            [MarshalAs(UnmanagedType.LPWStr)]
-            public string TargetName;
-            [MarshalAs(UnmanagedType.LPWStr)]
-            public string Comment;
+            [MarshalAs(UnmanagedType.LPWStr)] public string TargetName;
+            [MarshalAs(UnmanagedType.LPWStr)] public string Comment;
             public long LastWritten;
             public int CredentialBlobSize;
             public IntPtr CredentialBlob;
             public int Persist;
             public int AttributeCount;
             public IntPtr Attributes;
-            [MarshalAs(UnmanagedType.LPWStr)]
-            public string TargetAlias;
-            [MarshalAs(UnmanagedType.LPWStr)]
-            public string UserName;
+            [MarshalAs(UnmanagedType.LPWStr)] public string TargetAlias;
+            [MarshalAs(UnmanagedType.LPWStr)] public string UserName;
         }
 
 
@@ -65,49 +98,62 @@ namespace CredentialManagement
             EXPECT_CONFIRMATION = 0x20000,
             GENERIC_CREDENTIALS = 0x40000,
             USERNAME_TARGET_CREDENTIALS = 0x80000,
-            KEEP_USERNAME = 0x100000,
+            KEEP_USERNAME = 0x100000
         }
 
         [Flags]
         internal enum WINVISTA_CREDUI_FLAGS
         {
             /// <summary>
-            /// The caller is requesting that the credential provider return the user name and password in plain text.
-            /// This value cannot be combined with SECURE_PROMPT.
+            ///     The caller is requesting that the credential provider return the user name and password in plain text.
+            ///     This value cannot be combined with SECURE_PROMPT.
             /// </summary>
             CREDUIWIN_GENERIC = 0x1,
+
             /// <summary>
-            /// The Save check box is displayed in the dialog box.
+            ///     The Save check box is displayed in the dialog box.
             /// </summary>
             CREDUIWIN_CHECKBOX = 0x2,
+
             /// <summary>
-            /// Only credential providers that support the authentication package specified by the authPackage parameter should be enumerated.
-            /// This value cannot be combined with CREDUIWIN_IN_CRED_ONLY.
+            ///     Only credential providers that support the authentication package specified by the authPackage parameter should be
+            ///     enumerated.
+            ///     This value cannot be combined with CREDUIWIN_IN_CRED_ONLY.
             /// </summary>
             CREDUIWIN_AUTHPACKAGE_ONLY = 0x10,
+
             /// <summary>
-            /// Only the credentials specified by the InAuthBuffer parameter for the authentication package specified by the authPackage parameter should be enumerated.
-            /// If this flag is set, and the InAuthBuffer parameter is NULL, the function fails.
-            /// This value cannot be combined with CREDUIWIN_AUTHPACKAGE_ONLY.
+            ///     Only the credentials specified by the InAuthBuffer parameter for the authentication package specified by the
+            ///     authPackage parameter should be enumerated.
+            ///     If this flag is set, and the InAuthBuffer parameter is NULL, the function fails.
+            ///     This value cannot be combined with CREDUIWIN_AUTHPACKAGE_ONLY.
             /// </summary>
             CREDUIWIN_IN_CRED_ONLY = 0x20,
+
             /// <summary>
-            /// Credential providers should enumerate only administrators. This value is intended for User Account Control (UAC) purposes only. We recommend that external callers not set this flag.
+            ///     Credential providers should enumerate only administrators. This value is intended for User Account Control (UAC)
+            ///     purposes only. We recommend that external callers not set this flag.
             /// </summary>
             CREDUIWIN_ENUMERATE_ADMINS = 0x100,
+
             /// <summary>
-            /// Only the incoming credentials for the authentication package specified by the authPackage parameter should be enumerated.
+            ///     Only the incoming credentials for the authentication package specified by the authPackage parameter should be
+            ///     enumerated.
             /// </summary>
             CREDUIWIN_ENUMERATE_CURRENT_USER = 0x200,
+
             /// <summary>
-            /// The credential dialog box should be displayed on the secure desktop. This value cannot be combined with CREDUIWIN_GENERIC.
-            /// Windows Vista: This value is not supported until Windows Vista with SP1.
+            ///     The credential dialog box should be displayed on the secure desktop. This value cannot be combined with
+            ///     CREDUIWIN_GENERIC.
+            ///     Windows Vista: This value is not supported until Windows Vista with SP1.
             /// </summary>
             CREDUIWIN_SECURE_PROMPT = 0x1000,
+
             /// <summary>
-            /// The credential provider should align the credential BLOB pointed to by the refOutAuthBuffer parameter to a 32-bit boundary, even if the provider is running on a 64-bit system.
+            ///     The credential provider should align the credential BLOB pointed to by the refOutAuthBuffer parameter to a 32-bit
+            ///     boundary, even if the provider is running on a 64-bit system.
             /// </summary>
-            CREDUIWIN_PACK_32_WOW = 0x10000000,
+            CREDUIWIN_PACK_32_WOW = 0x10000000
         }
 
         internal enum CredUIReturnCodes
@@ -120,7 +166,7 @@ namespace CredentialManagement
             ERROR_INSUFFICIENT_BUFFER = 122,
             ERROR_BAD_ARGUMENTS = 160,
             ERROR_INVALID_PARAMETER = 87,
-            ERROR_INVALID_FLAGS = 1004,
+            ERROR_INVALID_FLAGS = 1004
         }
 
         internal enum CREDErrorCodes
@@ -137,36 +183,6 @@ namespace CredentialManagement
             SCARD_W_WRONG_CHV = (int)(0x8010006B - 0x100000000)
         }
 
-        [DllImport("Advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
-        internal static extern bool CredRead(string target, CredentialType type, int reservedFlag, out IntPtr CredentialPtr);
-
-        [DllImport("Advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
-        internal static extern bool CredWrite([In] ref CREDENTIAL userCredential, [In] UInt32 flags);
-
-        [DllImport("Advapi32.dll", EntryPoint = "CredFree", SetLastError = true)]
-        internal static extern bool CredFree([In] IntPtr cred);
-
-        [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode)]
-        internal static extern bool CredDelete(StringBuilder target, CredentialType type, int flags);
-
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        internal static extern bool CredEnumerateW(string filter, int flag, out uint count, out IntPtr pCredentials);
-
-        [DllImport("credui.dll")]
-        internal static extern CredUIReturnCodes CredUIPromptForCredentials(ref CREDUI_INFO creditUR, string targetName, IntPtr reserved1, int iError, StringBuilder userName, int maxUserName, StringBuilder password, int maxPassword, [MarshalAs(UnmanagedType.Bool)] ref bool pfSave, int flags);
-
-        [DllImport("credui.dll", CharSet = CharSet.Unicode)]
-        internal static extern CredUIReturnCodes CredUIPromptForWindowsCredentials(ref CREDUI_INFO notUsedHere, int authError, ref uint authPackage, IntPtr InAuthBuffer, uint InAuthBufferSize, out IntPtr refOutAuthBuffer, out uint refOutAuthBufferSize, ref bool fSave, int flags);
-
-        [DllImport("ole32.dll")]
-        internal static extern void CoTaskMemFree(IntPtr ptr);
-
-        [DllImport("credui.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        internal static extern Boolean CredPackAuthenticationBuffer(int dwFlags, StringBuilder pszUserName, StringBuilder pszPassword, IntPtr pPackedCredentials, ref int pcbPackedCredentials);
-
-        [DllImport("credui.dll", CharSet = CharSet.Auto)]
-        internal static extern bool CredUnPackAuthenticationBuffer(int dwFlags, IntPtr pAuthBuffer, uint cbAuthBuffer, StringBuilder pszUserName, ref int pcchMaxUserName, StringBuilder pszDomainName, ref int pcchMaxDomainame, StringBuilder pszPassword, ref int pcchMaxPassword);
-
         internal sealed class CriticalCredentialHandle : CriticalHandleZeroOrMinusOneIsInvalid
         {
             // Set the handle.
@@ -178,21 +194,16 @@ namespace CredentialManagement
             internal CREDENTIAL GetCredential()
             {
                 if (!IsInvalid)
-                {
                     // Get the Credential from the mem location
                     return (CREDENTIAL)Marshal.PtrToStructure(handle, typeof(CREDENTIAL));
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid CriticalHandle!");
-                }
+                throw new InvalidOperationException("Invalid CriticalHandle!");
             }
 
             // Perform any specific actions to release the handle in the ReleaseHandle method.
             // Often, you need to use Pinvoke to make a call into the Win32 API to release the 
             // handle. In this case, however, we can use the Marshal class to release the unmanaged memory.
 
-            override protected bool ReleaseHandle()
+            protected override bool ReleaseHandle()
             {
                 // If the handle was set, free it. Return success.
                 if (!IsInvalid)
@@ -204,6 +215,7 @@ namespace CredentialManagement
                     SetHandleAsInvalid();
                     return true;
                 }
+
                 // Return false. 
                 return false;
             }

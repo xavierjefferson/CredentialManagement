@@ -1,6 +1,6 @@
 ﻿namespace CredentialManagement
 {
-    public enum CredentialType: uint 
+    public enum CredentialType : uint
     {
         None = 0,
         Generic = 1,

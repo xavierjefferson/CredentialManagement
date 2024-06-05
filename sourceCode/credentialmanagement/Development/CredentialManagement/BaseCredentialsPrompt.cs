@@ -7,24 +7,6 @@ namespace CredentialManagement
 {
     public abstract class BaseCredentialsPrompt : ICredentialsPrompt
     {
-        #region Fields
-
-        bool _disposed;
-        static SecurityPermission _unmanagedCodePermission;
-        static object _lockObject = new object();
-
-        string _username;
-        SecureString _password;
-        bool _saveChecked;
-        string _message;
-        string _title;
-        int _errorCode;
-
-        int _dialogFlags;
-
-
-        #endregion
-
         #region Constructor(s)
 
         static BaseCredentialsPrompt()
@@ -37,40 +19,56 @@ namespace CredentialManagement
 
         #endregion
 
-        #region Protected Methods
 
-        protected void AddFlag(bool add, int flag)
+        public virtual DialogResult ShowDialog()
         {
-            if (add)
-            {
-                _dialogFlags |= flag;
-            }
-            else
-            {
-                _dialogFlags &= ~flag;
-            }
+            return ShowDialog(IntPtr.Zero);
         }
 
-        protected virtual NativeMethods.CREDUI_INFO CreateCREDUI_INFO(IntPtr owner)
-        {
-            NativeMethods.CREDUI_INFO credUI = new NativeMethods.CREDUI_INFO();
-            credUI.cbSize = Marshal.SizeOf(credUI);
-            credUI.hwndParent = owner;
-            credUI.pszCaptionText = Title;
-            credUI.pszMessageText = Message;
-            return credUI;
-        }
-
-        #endregion
+        public abstract DialogResult ShowDialog(IntPtr owner);
 
         #region Private Methods
 
         protected void CheckNotDisposed()
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException("CredentialsPrompt object is already disposed.");
-            }
+            if (_disposed) throw new ObjectDisposedException("CredentialsPrompt object is already disposed.");
+        }
+
+        #endregion
+
+        #region Fields
+
+        private bool _disposed;
+        private static readonly SecurityPermission _unmanagedCodePermission;
+        private static readonly object _lockObject = new object();
+
+        private string _username;
+        private SecureString _password;
+        private bool _saveChecked;
+        private string _message;
+        private string _title;
+        private int _errorCode;
+
+        #endregion
+
+        #region Protected Methods
+
+        protected void AddFlag(bool add, int flag)
+        {
+            if (add)
+                DialogFlags |= flag;
+            else
+                DialogFlags &= ~flag;
+        }
+
+        protected virtual NativeMethods.CREDUI_INFO CreateCREDUI_INFO(IntPtr owner)
+        {
+            var credUI = new NativeMethods.CREDUI_INFO();
+            credUI.cbSize = Marshal.SizeOf(credUI);
+            credUI.hwndParent = owner;
+            credUI.pszCaptionText = Title;
+            credUI.pszMessageText = Message;
+            return credUI;
         }
 
         #endregion
@@ -84,6 +82,7 @@ namespace CredentialManagement
             // Prevent GC Collection since we have already disposed of this object
             GC.SuppressFinalize(this);
         }
+
         ~BaseCredentialsPrompt()
         {
             Dispose(false);
@@ -92,11 +91,10 @@ namespace CredentialManagement
         private void Dispose(bool disposing)
         {
             if (!_disposed)
-            {
                 if (disposing)
                 {
                 }
-            }
+
             _disposed = true;
         }
 
@@ -128,14 +126,9 @@ namespace CredentialManagement
             set
             {
                 CheckNotDisposed();
-                if (string.IsNullOrEmpty(value))
-                {
-                    throw new ArgumentNullException("value");
-                }
+                if (string.IsNullOrEmpty(value)) throw new ArgumentNullException("value");
                 if (value.Length > NativeMethods.CREDUI_MAX_MESSAGE_LENGTH)
-                {
                     throw new ArgumentOutOfRangeException("value");
-                }
                 _message = value;
             }
         }
@@ -150,14 +143,9 @@ namespace CredentialManagement
             set
             {
                 CheckNotDisposed();
-                if (string.IsNullOrEmpty(value))
-                {
-                    throw new ArgumentNullException("value");
-                }
+                if (string.IsNullOrEmpty(value)) throw new ArgumentNullException("value");
                 if (value.Length > NativeMethods.CREDUI_MAX_CAPTION_LENGTH)
-                {
                     throw new ArgumentOutOfRangeException("value");
-                }
                 _title = value;
             }
         }
@@ -172,38 +160,27 @@ namespace CredentialManagement
             set
             {
                 CheckNotDisposed();
-                if (null == value)
-                {
-                    throw new ArgumentNullException("value");
-                }
+                if (null == value) throw new ArgumentNullException("value");
                 if (value.Length > NativeMethods.CREDUI_MAX_USERNAME_LENGTH)
-                {
                     throw new ArgumentOutOfRangeException("value");
-                }
                 _username = value;
             }
         }
 
         public string Password
         {
-            get
-            {
-                return SecureStringHelper.CreateString(SecurePassword);
-            }
+            get => SecureStringHelper.CreateString(SecurePassword);
             set
             {
                 CheckNotDisposed();
-                if (null == value)
-                {
-                    throw new ArgumentNullException("value");
-                }
+                if (null == value) throw new ArgumentNullException("value");
                 if (value.Length > NativeMethods.CREDUI_MAX_PASSWORD_LENGTH)
-                {
                     throw new ArgumentOutOfRangeException("value");
-                }
-                SecurePassword = SecureStringHelper.CreateSecureString(string.IsNullOrEmpty(value) ? string.Empty : value);
+                SecurePassword =
+                    SecureStringHelper.CreateSecureString(string.IsNullOrEmpty(value) ? string.Empty : value);
             }
         }
+
         public SecureString SecurePassword
         {
             get
@@ -220,9 +197,11 @@ namespace CredentialManagement
                     _password.Clear();
                     _password.Dispose();
                 }
+
                 _password = null == value ? new SecureString() : value.Copy();
             }
         }
+
         public int ErrorCode
         {
             get
@@ -241,18 +220,8 @@ namespace CredentialManagement
 
         public abstract bool GenericCredentials { get; set; }
 
-        protected int DialogFlags
-        {
-            get { return _dialogFlags; }
-        }
+        protected int DialogFlags { get; private set; }
 
         #endregion
-
-
-        public virtual DialogResult ShowDialog()
-        {
-            return ShowDialog(IntPtr.Zero);
-        }
-        public abstract DialogResult ShowDialog(IntPtr owner);
     }
 }

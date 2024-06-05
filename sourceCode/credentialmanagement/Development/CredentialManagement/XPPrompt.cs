@@ -8,9 +8,9 @@ namespace CredentialManagement
 {
     public class XPPrompt : BaseCredentialsPrompt
     {
+        private Bitmap _banner;
 
-        string _target;
-        Bitmap _banner;
+        private string _target;
 
         public string Target
         {
@@ -22,13 +22,11 @@ namespace CredentialManagement
             set
             {
                 CheckNotDisposed();
-                if (string.IsNullOrEmpty(value))
-                {
-                    throw new ArgumentNullException("value");
-                }
+                if (string.IsNullOrEmpty(value)) throw new ArgumentNullException(nameof(value));
                 _target = value;
             }
         }
+
         public Bitmap Banner
         {
             get
@@ -39,10 +37,7 @@ namespace CredentialManagement
             set
             {
                 CheckNotDisposed();
-                if (null != _banner)
-                {
-                    _banner.Dispose();
-                }
+                if (null != _banner) _banner.Dispose();
                 _banner = value;
             }
         }
@@ -60,6 +55,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.COMPLETE_USERNAME);
             }
         }
+
         public bool DoNotPersist
         {
             get
@@ -73,6 +69,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.DO_NOT_PERSIST);
             }
         }
+
         public bool ExcludeCertificates
         {
             get
@@ -86,6 +83,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.EXCLUDE_CERTIFICATES);
             }
         }
+
         public bool ExpectConfirmation
         {
             get
@@ -99,6 +97,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.EXPECT_CONFIRMATION);
             }
         }
+
         public bool IncorrectPassword
         {
             get
@@ -112,6 +111,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.INCORRECT_PASSWORD);
             }
         }
+
         public bool Persist
         {
             get
@@ -125,6 +125,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.PERSIST);
             }
         }
+
         public bool RequestAdministrator
         {
             get
@@ -138,6 +139,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.REQUEST_ADMINISTRATOR);
             }
         }
+
         public bool RequireCertificate
         {
             get
@@ -151,6 +153,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.REQUIRE_CERTIFICATE);
             }
         }
+
         public bool RequireSmartCard
         {
             get
@@ -164,6 +167,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.REQUIRE_SMARTCARD);
             }
         }
+
         public bool UsernameReadOnly
         {
             get
@@ -177,6 +181,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.KEEP_USERNAME);
             }
         }
+
         public bool ValidateUsername
         {
             get
@@ -190,6 +195,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.VALIDATE_USERNAME);
             }
         }
+
         public override bool ShowSaveCheckBox
         {
             get
@@ -203,6 +209,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.SHOW_SAVE_CHECK_BOX);
             }
         }
+
         public override bool GenericCredentials
         {
             get
@@ -216,6 +223,7 @@ namespace CredentialManagement
                 AddFlag(value, (int)NativeMethods.WINXP_CREDUI_FLAGS.GENERIC_CREDENTIALS);
             }
         }
+
         public bool AlwaysShowUI
         {
             get
@@ -232,37 +240,33 @@ namespace CredentialManagement
 
         protected override NativeMethods.CREDUI_INFO CreateCREDUI_INFO(IntPtr owner)
         {
-            NativeMethods.CREDUI_INFO info = base.CreateCREDUI_INFO(owner);
-            info.hbmBanner = null == Banner ? IntPtr.Zero : Banner.GetHbitmap();
+            var info = base.CreateCREDUI_INFO(owner);
+            info.hbmBanner = Banner?.GetHbitmap() ?? IntPtr.Zero;
             return info;
         }
+
         public override DialogResult ShowDialog(IntPtr owner)
         {
             CheckNotDisposed();
 
-            NativeMethods.CREDUI_INFO credUI = CreateCREDUI_INFO(owner);
+            var credUI = CreateCREDUI_INFO(owner);
 
-            StringBuilder usernameBuffer = new StringBuilder(1000);
-            StringBuilder passwordBuffer = new StringBuilder(1000);
+            var usernameBuffer = new StringBuilder(1000);
+            var passwordBuffer = new StringBuilder(1000);
 
-            bool persist = SaveChecked;
+            var persist = SaveChecked;
 
-            if (string.IsNullOrEmpty(Target))
-            {
-                throw new InvalidOperationException("Target must always be specified.");
-            }
+            if (string.IsNullOrEmpty(Target)) throw new InvalidOperationException("Target must always be specified.");
 
             if (AlwaysShowUI && !GenericCredentials)
-            {
                 throw new InvalidOperationException("AlwaysShowUI must be specified with GenericCredentials property.");
-            }
 
-            NativeMethods.CredUIReturnCodes result = NativeMethods.CredUIPromptForCredentials(ref credUI, Target,
-                                                                                  IntPtr.Zero, ErrorCode, usernameBuffer,
-                                                                                  NativeMethods.CREDUI_MAX_USERNAME_LENGTH,
-                                                                                  passwordBuffer,
-                                                                                  NativeMethods.CREDUI_MAX_PASSWORD_LENGTH,
-                                                                                  ref persist, DialogFlags);
+            var result = NativeMethods.CredUIPromptForCredentials(ref credUI, Target,
+                IntPtr.Zero, ErrorCode, usernameBuffer,
+                NativeMethods.CREDUI_MAX_USERNAME_LENGTH,
+                passwordBuffer,
+                NativeMethods.CREDUI_MAX_PASSWORD_LENGTH,
+                ref persist, DialogFlags);
             switch (result)
             {
                 case NativeMethods.CredUIReturnCodes.ERROR_CANCELLED:
@@ -274,16 +278,14 @@ namespace CredentialManagement
                 case NativeMethods.CredUIReturnCodes.ERROR_INVALID_PARAMETER:
                 case NativeMethods.CredUIReturnCodes.ERROR_INVALID_FLAGS:
                 case NativeMethods.CredUIReturnCodes.ERROR_BAD_ARGUMENTS:
-                    throw new InvalidOperationException("Invalid properties were specified.", new Win32Exception(Marshal.GetLastWin32Error()));
+                    throw new InvalidOperationException("Invalid properties were specified.",
+                        new Win32Exception(Marshal.GetLastWin32Error()));
             }
 
             Username = usernameBuffer.ToString();
             Password = passwordBuffer.ToString();
 
-            if (passwordBuffer.Length > 0)
-            {
-                passwordBuffer.Remove(0, passwordBuffer.Length);
-            }
+            if (passwordBuffer.Length > 0) passwordBuffer.Remove(0, passwordBuffer.Length);
 
             return DialogResult.OK;
         }

@@ -11,27 +11,22 @@ namespace CredentialManagement
         internal static unsafe SecureString CreateSecureString(string plainString)
         {
             SecureString str;
-            if (string.IsNullOrEmpty(plainString))
-            {
-                return new SecureString();
-            }
+            if (string.IsNullOrEmpty(plainString)) return new SecureString();
             fixed (char* str2 = plainString)
             {
-                char* chPtr = str2;
+                var chPtr = str2;
                 str = new SecureString(chPtr, plainString.Length);
                 str.MakeReadOnly();
             }
+
             return str;
         }
 
         internal static string CreateString(SecureString secureString)
         {
             string str;
-            IntPtr zero = IntPtr.Zero;
-            if ((secureString == null) || (secureString.Length == 0))
-            {
-                return string.Empty;
-            }
+            var zero = IntPtr.Zero;
+            if (secureString == null || secureString.Length == 0) return string.Empty;
             try
             {
                 zero = Marshal.SecureStringToBSTR(secureString);
@@ -39,14 +34,10 @@ namespace CredentialManagement
             }
             finally
             {
-                if (zero != IntPtr.Zero)
-                {
-                    Marshal.ZeroFreeBSTR(zero);
-                }
+                if (zero != IntPtr.Zero) Marshal.ZeroFreeBSTR(zero);
             }
+
             return str;
         }
     }
-
-
 }
